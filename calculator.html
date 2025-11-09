@@ -1,0 +1,237 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Basic Calculator</title>
+<style>
+  body {
+    background: #282c34;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: white;
+  }
+  .calculator {
+    background: #3c3f47;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    width: 320px;
+  }
+  .display {
+    background: #1e2127;
+    height: 60px;
+    font-size: 2rem;
+    padding: 10px 20px;
+    text-align: right;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    overflow-x: auto;
+  }
+  .buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    padding: 15px 20px 20px 20px;
+  }
+  button {
+    background: #4c505a;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.3rem;
+    color: white;
+    cursor: pointer;
+    padding: 20px 0;
+    transition: background 0.3s ease;
+    user-select: none;
+  }
+  button.operator {
+    background: #ff9500;
+    color: white;
+  }
+  button.operator:hover {
+    background: #e08900;
+  }
+  button.function {
+    background: #d32f2f;
+  }
+  button.function:hover {
+    background: #a52323;
+  }
+  button:hover {
+    background: #6a6d75;
+  }
+  button:focus {
+    outline:none;
+    box-shadow: 0 0 3px 2px #ffa500;
+  }
+</style>
+</head>
+<body>
+
+<div class="calculator" role="application" aria-label="Calculator">
+  <div id="display" class="display" aria-live="polite" aria-atomic="true">0</div>
+  <div class="buttons">
+    <button class="function" id="clear" aria-label="Clear">C</button>
+    <button class="function" id="backspace" aria-label="Backspace">⌫</button>
+    <button class="operator" id="percentage" aria-label="Percentage">%</button>
+    <button class="operator" id="divide" aria-label="Divide">÷</button>
+
+    <button class="num" aria-label="7">7</button>
+    <button class="num" aria-label="8">8</button>
+    <button class="num" aria-label="9">9</button>
+    <button class="operator" id="multiply" aria-label="Multiply">×</button>
+
+    <button class="num" aria-label="4">4</button>
+    <button class="num" aria-label="5">5</button>
+    <button class="num" aria-label="6">6</button>
+    <button class="operator" id="subtract" aria-label="Subtract">-</button>
+
+    <button class="num" aria-label="1">1</button>
+    <button class="num" aria-label="2">2</button>
+    <button class="num" aria-label="3">3</button>
+    <button class="operator" id="add" aria-label="Add">+</button>
+
+    <button class="num" aria-label="0" style="grid-column: span 2;">0</button>
+    <button class="num" aria-label="Decimal">.</button>
+    <button class="equal operator" id="equals" aria-label="Equals">=</button>
+  </div>
+</div>
+
+<script>
+  const display = document.getElementById('display');
+  let currentInput = '';
+  let resultDisplayed = false;
+
+  function updateDisplay(value) {
+    display.textContent = value || '0';
+  }
+
+  function isOperator(char) {
+    return ['+', '-', '*', '/','%'].includes(char);
+  }
+
+  function sanitizeExpression(expr) {
+    // Replace multiplication and division symbols for eval
+    return expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+  }
+
+
+  function calculate() {
+    if (!currentInput) return;
+    let expression = sanitizeExpression(currentInput);
+
+    try {
+      // Evaluate expression using Function constructor for safer eval equivalent
+      let evalResult = Function(`'use strict';return (${expression})`)();
+      if (evalResult === Infinity || evalResult === -Infinity) {
+        updateDisplay('Error: Divide by zero');
+        currentInput = '';
+        return;
+      }
+      updateDisplay(evalResult);
+      currentInput = evalResult.toString();
+      resultDisplayed = true;
+    } catch {
+      updateDisplay('Error');
+      currentInput = '';
+    }
+  }
+
+  function appendInput(value) {
+    if (resultDisplayed) {
+      // Start new input after result displayed except when operator is pressed
+      if (isOperator(value)) {
+        currentInput += value;
+        resultDisplayed = false;
+      } else {
+        currentInput = value;
+        resultDisplayed = false;
+      }
+    } else {
+      // Prevent multiple operators in a row
+      if (isOperator(value)) {
+        if (currentInput === '' && value !== '-') {
+          // Avoid starting with operator except negative
+          return;
+        }
+        if (isOperator(currentInput.slice(-1))) {
+          currentInput = currentInput.slice(0, -1) + value;
+          updateDisplay(currentInput);
+          return;
+        }
+      }
+      // Allow only one decimal per number segment
+      if (value === '.') {
+        let parts = currentInput.split(/[\+\-\*\/\%]/);
+        let lastNumber = parts[parts.length - 1];
+        if (lastNumber.includes('.')) return;
+        if (lastNumber === '') value = '0.'; // Leading decimal
+      }
+      currentInput += value;
+    }
+    updateDisplay(currentInput);
+  }
+
+  document.querySelectorAll('.num, .operator').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.textContent;
+      if (val === '=') {
+        calculate();
+      } else {
+        appendInput(val);
+      }
+    });
+  });
+
+  document.getElementById('clear').addEventListener('click', () => {
+    currentInput = '';
+    updateDisplay('0');
+  });
+
+  document.getElementById('backspace').addEventListener('click', () => {
+    if (resultDisplayed) {
+      currentInput = '';
+      resultDisplayed = false;
+      updateDisplay('0');
+    } else {
+      currentInput = currentInput.slice(0, -1);
+      updateDisplay(currentInput || '0');
+    }
+  });
+
+  // Keyboard support
+  window.addEventListener('keydown', (e) => {
+    const allowedKeys = '0123456789+-*/.%';
+    if (allowedKeys.includes(e.key)) {
+      e.preventDefault();
+      if (e.key === '*') appendInput('×');
+      else if (e.key === '/') appendInput('÷');
+      else appendInput(e.key);
+    } else if (e.key === 'Enter' || e.key === '=') {
+      e.preventDefault();
+      calculate();
+    } else if (e.key === 'Backspace') {
+      e.preventDefault();
+      if (resultDisplayed) {
+        currentInput = '';
+        resultDisplayed = false;
+        updateDisplay('0');
+      } else {
+        currentInput = currentInput.slice(0, -1);
+        updateDisplay(currentInput || '0');
+      }
+    } else if (e.key.toLowerCase() === 'c') {
+      e.preventDefault();
+      currentInput = '';
+      updateDisplay('0');
+    }
+  });
+
+</script>
+
+</body>
+</html>
